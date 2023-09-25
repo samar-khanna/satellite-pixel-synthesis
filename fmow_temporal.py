@@ -150,10 +150,10 @@ def fmow_temporal_attpatch_preprocess_train(examples, img_transform, fmow_meta_d
             data = {}
             for i in range(resolution // crop_size):
                 for j in range(resolution // crop_size):
-                    target_img = tt.patch_crop_dim3(target_img, i * crop_size, j * crop_size, crop_size)
-                    cond1 = tt.patch_crop_dim3(cond1, i * crop_size, j * crop_size, crop_size)
-                    cond2 = tt.patch_crop_dim3(cond2, i * crop_size, j * crop_size, crop_size)
-                    data[(i, j)] = (target_img, cond1, cond2, i * crop_size, j * crop_size)
+                    target_img_ij = tt.patch_crop_dim3(target_img, i * crop_size, j * crop_size, crop_size)
+                    cond1_ij = tt.patch_crop_dim3(cond1, i * crop_size, j * crop_size, crop_size)
+                    cond2_ij = tt.patch_crop_dim3(cond2, i * crop_size, j * crop_size, crop_size)
+                    data[(i, j)] = (target_img_ij, cond1_ij, cond2_ij, i * crop_size, j * crop_size)
             yield data
         else:
             target_img, h_start, w_start = tt.random_crop_dim3(target_img, crop_size)
