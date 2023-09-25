@@ -123,7 +123,7 @@ def fmow_temporal_preprocess_train(examples, img_transform, fmow_meta_df, resolu
         yield target_img, cond1, cond2
 
 
-def fmow_temporal_attpatch_preprocess_train(examples, img_transform, fmow_meta_df, resolution, crop_size, num_cond=2):
+def fmow_temporal_attpatch_preprocess_train(examples, img_transform, fmow_meta_df, resolution, crop_size, num_cond=2, is_test=False,):
     for example in examples:
         img_temporal, md_keys = fmow_temporal_images(example, img_transform, num_frames=num_cond + 1)
 
@@ -146,10 +146,20 @@ def fmow_temporal_attpatch_preprocess_train(examples, img_transform, fmow_meta_d
         cond1 = img_temporal[1]
         cond2 = img_temporal[2]
 
-        target_img, h_start, w_start = tt.random_crop_dim3(target_img, crop_size)
-        cond1 = tt.patch_crop_dim3(cond1, h_start, w_start, crop_size)
-        cond2 = tt.patch_crop_dim3(cond2, h_start, w_start, crop_size)
-        yield target_img, cond1, cond2, h_start, w_start
+        if is_test:
+            data = {}
+            for i in range(resolution // crop_size):
+                for j in range(resolution // crop_size):
+                    target_img = tt.patch_crop_dim3(target_img, i * crop_size, j * crop_size, crop_size)
+                    cond1 = tt.patch_crop_dim3(cond1, i * crop_size, j * crop_size, crop_size)
+                    cond2 = tt.patch_crop_dim3(cond2, i * crop_size, j * crop_size, crop_size)
+                    data[(i, j)] = (target_img, cond1, cond2, i * crop_size, j * crop_size)
+            yield data
+        else:
+            target_img, h_start, w_start = tt.random_crop_dim3(target_img, crop_size)
+            cond1 = tt.patch_crop_dim3(cond1, h_start, w_start, crop_size)
+            cond2 = tt.patch_crop_dim3(cond2, h_start, w_start, crop_size)
+            yield target_img, cond1, cond2, h_start, w_start
 
 
 def collate_fn(examples):

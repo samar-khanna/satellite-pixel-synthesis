@@ -590,7 +590,7 @@ if __name__ == '__main__':
             wds.tarfile_to_samples(),
             wds.shuffle(100, initial=100),
             wds.decode(),
-            partial(fmow_temporal_attpatch_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, crop_size=args.crop_size, num_cond=2),
+            partial(fmow_temporal_attpatch_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, crop_size=args.crop_size, num_cond=2, is_test=True),
         )
     # dataset = PatchNSTDataset(args.path, transform=transform, enc_transform=enc_transform,
     #                                 resolution=args.coords_size, crop_size = args.crop_size,
@@ -618,7 +618,7 @@ if __name__ == '__main__':
         pin_memory=False,
     )
 
-    test_data = iter(test_loader).next()
+    test_data = next(iter(test_loader))
     del testset
     del test_loader
 #     print(test_data[0].shape)
