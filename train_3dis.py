@@ -144,6 +144,7 @@ def train(args, loader, generator, discriminator, g_optim, d_optim, g_ema, test_
         # key = np.random.randint(n_scales)
         # real_stack = data[key].to(device)
         highres, lowres_img, highres_img2 = next(loader)
+        print(len(highres), highres[0].shape)
         highres = highres.to(device)
         lowres_img = lowres_img.to(device)
         highres_img2 = highres_img2.to(device)
@@ -471,18 +472,19 @@ if __name__ == '__main__':
         del ckpt
         torch.cuda.empty_cache()
 
+    print('setting up dist')
     if args.distributed:
         generator = nn.parallel.DistributedDataParallel(
             generator,
-            device_ids=[args.local_rank],
-            output_device=args.local_rank,
+            #device_ids=[args.local_rank],
+            #output_device=args.local_rank,
             broadcast_buffers=False,
         )
 
         discriminator = nn.parallel.DistributedDataParallel(
             discriminator,
-            device_ids=[args.local_rank],
-            output_device=args.local_rank,
+            #device_ids=[args.local_rank],
+            #output_device=args.local_rank,
             broadcast_buffers=False,
         )
 
@@ -492,23 +494,24 @@ if __name__ == '__main__':
 #             output_device=args.local_rank,
 #             broadcast_buffers=False,
 #         )
+    print("Done setting up dist")
 
     enc_transform = transforms.Compose(
         [
             # transforms.Resize(256),
             # transforms.ToTensor(),
             # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True),
-            transforms.Resize(256),
-            transforms.CenterCrop(256),
             transforms.ToTensor(),
+            transforms.Resize(256, antialias=True),
+            transforms.CenterCrop(256),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True),
         ]
     )
     transform = transforms.Compose(
         [
-            transforms.Resize(256),
-            transforms.CenterCrop(256),
             transforms.ToTensor(),
+            transforms.Resize(256, antialias=True),
+            transforms.CenterCrop(256),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True),
         ]
     )
@@ -523,26 +526,28 @@ if __name__ == '__main__':
     #                                 resolution=args.coords_size, integer_values=args.coords_integer_values)
     fmow_train_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-train-meta.csv')
     dataset = wds.DataPipeline(
-            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-train/{000000..000229}.tar -'),
+            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-train/{000000..000229}.tar'),
             wds.tarfile_to_samples(),
-            wds.shuffle(10000, initial=100),
+            wds.shuffle(100, initial=100),
             wds.decode(),
             partial(fmow_temporal_preprocess_train, img_transform=enc_transform, fmow_meta_df=fmow_train_meta_df, resolution=256, num_cond=2),
         )
     fmow_val_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-val-meta.csv')
     testset = wds.DataPipeline(
-            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar -'),
+            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar'),
             wds.tarfile_to_samples(),
-            wds.shuffle(10000, initial=100),
+            wds.shuffle(100, initial=100),
             wds.decode(),
             partial(fmow_temporal_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, num_cond=2),
         )
+
+
     # fid_dataset = ImageDataset(args.path, transform=transform_fid, resolution=args.coords_size, to_crop=args.to_crop)
     # fid_dataset.length = args.fid_samples
     loader = data.DataLoader(
         dataset,
         batch_size=args.batch,
-        sampler=data_sampler(dataset, shuffle=True, distributed=args.distributed),
+#        sampler=data_sampler(dataset, shuffle=True, distributed=args.distributed),
         drop_last=True,
         num_workers=args.num_workers,
         pin_memory=True,
@@ -551,17 +556,18 @@ if __name__ == '__main__':
     test_loader = data.DataLoader(
         testset,
         batch_size=args.n_sample,
-        sampler=data_sampler(testset, shuffle=False, distributed=args.distributed),
+#        sampler=data_sampler(testset, shuffle=False, distributed=args.distributed),
         drop_last=True,
         num_workers=args.num_workers,
         pin_memory=False,
     )
 
-    test_data = iter(test_loader).next()
+    print("Ready to load test data!")
+    test_data = next(iter(test_loader))
     del testset
     del test_loader
 #     print(test_data[0].shape)
 
     writer = SummaryWriter(log_dir=args.logdir)
-
+    print("starting train")
     train(args, loader, generator, discriminator, g_optim, d_optim, g_ema, test_data, device)
