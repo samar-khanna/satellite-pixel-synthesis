@@ -112,15 +112,15 @@ def fmow_temporal_preprocess_train(examples, img_transform, fmow_meta_df, resolu
         #     year, month = md[-3], md[-2]
         #     md_tensor.append((year, month))
 
-        target_img = torch.cat((target_img, cond_t)),  # (C+3, H, W)
+        target_img = torch.cat((target_img, cond_t), dim=0)  # (C+3, H, W)
         cond1 = img_temporal[1]
         cond2 = img_temporal[2]
-        output = {
-            'target': target_img,
-            'cond1': cond1,
-            'cond2': cond2,
-        }
-        yield output
+        # output = {
+        #     'target': target_img,
+        #     'cond1': cond1,
+        #     'cond2': cond2,
+        # }
+        yield target_img, cond1, cond2
 
 
 def collate_fn(examples):

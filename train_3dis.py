@@ -550,7 +550,7 @@ if __name__ == '__main__':
         drop_last=True,
         num_workers=args.num_workers,
         pin_memory=True,
-        collate_fn=collate_fn,
+        # collate_fn=collate_fn,
     )
 
     test_loader = data.DataLoader(
@@ -560,7 +560,7 @@ if __name__ == '__main__':
         drop_last=True,
         num_workers=args.num_workers,
         pin_memory=False,
-        collate_fn=collate_fn,
+        # collate_fn=collate_fn,
     )
 
     print("Ready to load test data!")
