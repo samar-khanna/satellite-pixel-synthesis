@@ -21,7 +21,7 @@ import model
 from model.loss import SSIM
 from dataset import Naip2SentinelTDataset
 from distributed import get_rank, synchronize, reduce_loss_dict
-from fmow_temporal import fmow_temporal_preprocess_train
+from fmow_temporal import fmow_temporal_preprocess_train, collate_fn
 from tensor_transforms import convert_to_coord_format
 import torchvision.models as models
 
@@ -144,7 +144,6 @@ def train(args, loader, generator, discriminator, g_optim, d_optim, g_ema, test_
         # key = np.random.randint(n_scales)
         # real_stack = data[key].to(device)
         highres, lowres_img, highres_img2 = next(loader)
-        print(len(highres), highres[0].shape)
         highres = highres.to(device)
         lowres_img = lowres_img.to(device)
         highres_img2 = highres_img2.to(device)
@@ -551,6 +550,7 @@ if __name__ == '__main__':
         drop_last=True,
         num_workers=args.num_workers,
         pin_memory=True,
+        collate_fn=collate_fn,
     )
 
     test_loader = data.DataLoader(
@@ -560,6 +560,7 @@ if __name__ == '__main__':
         drop_last=True,
         num_workers=args.num_workers,
         pin_memory=False,
+        collate_fn=collate_fn,
     )
 
     print("Ready to load test data!")
