@@ -123,6 +123,34 @@ def fmow_temporal_preprocess_train(examples, img_transform, fmow_meta_df, resolu
         yield target_img, cond1, cond2
 
 
+def fmow_temporal_attpatch_preprocess_train(examples, img_transform, fmow_meta_df, resolution, crop_size, num_cond=2):
+    for example in examples:
+        img_temporal, md_keys = fmow_temporal_images(example, img_transform, num_frames=num_cond + 1)
+
+        target_img = img_temporal[0]  # (C, H, W)
+        target_rgb_key = md_keys[0].replace('metadata', 'input').replace('json', 'npy')
+        target_md = fmow_numerical_metadata(example, fmow_meta_df, resolution, 7, rgb_key=target_rgb_key, md_key=md_keys[0])
+        year, month = target_md[-3], target_md[-2]
+        t = year * 100 + month
+        cond_t = tt.convert_to_coord_uneven_t(1, resolution, resolution, t, 5000)
+        # target_md = metadata_normalize(target_md)
+
+        # md_tensor = []
+        # for md_key in md_keys[1:]:
+        #     rgb_key = md_key.replace('metadata', 'input').replace('json', 'npy')
+        #     md = fmow_numerical_metadata(example, fmow_meta_df, resolution, 7, rgb_key=rgb_key, md_key=md_key)
+        #     year, month = md[-3], md[-2]
+        #     md_tensor.append((year, month))
+
+        target_img = torch.cat((target_img, cond_t), dim=0)  # (C+3, H, W)
+        cond1 = img_temporal[1]
+        cond2 = img_temporal[2]
+
+        target_img, h_start, w_start = tt.random_crop_dim3(target_img, crop_size)
+        cond1 = tt.patch_crop_dim3(cond1, h_start, w_start, crop_size)
+        yield target_img, cond1, cond2
+
+
 def collate_fn(examples):
     target_imgs = []
     cond1_imgs = []

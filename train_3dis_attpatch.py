@@ -4,6 +4,10 @@ import random
 import os
 
 import numpy as np
+from functools import partial
+
+import pandas as pd
+import webdataset as wds
 import torch
 from torch import nn, autograd, optim
 from torch.nn import functional as F
@@ -19,6 +23,7 @@ from dataset import PatchNSTDataset, MSNSTDataset
 from distributed import get_rank, synchronize, reduce_loss_dict
 from tensor_transforms import convert_to_coord_format
 import torchvision.models as models
+from fmow_temporal import fmow_temporal_attpatch_preprocess_train
 
 
 def data_sampler(dataset, shuffle, distributed):
@@ -552,17 +557,17 @@ if __name__ == '__main__':
             # transforms.Resize(256),
             # transforms.ToTensor(),
             # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True),
-            transforms.Resize(256),
-            transforms.CenterCrop(256),
             transforms.ToTensor(),
+            transforms.Resize(256, antialias=True),
+            transforms.CenterCrop(256),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True),
         ]
     )
     transform = transforms.Compose(
         [
-            transforms.Resize(256),
-            transforms.CenterCrop(256),
             transforms.ToTensor(),
+            transforms.Resize(256, antialias=True),
+            transforms.CenterCrop(256),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True),
         ]
     )
@@ -571,18 +576,34 @@ if __name__ == '__main__':
     #                                    transforms.Lambda(lambda x: x.mul_(255.).byte())])
     # dataset = MultiScaleDataset(args.path, transform=transform, resolution=args.coords_size, crop_size=args.crop,
     #                             integer_values=args.coords_integer_values, to_crop=args.to_crop)
-    dataset = PatchNSTDataset(args.path, transform=transform, enc_transform=enc_transform,
-                                    resolution=args.coords_size, crop_size = args.crop_size,
-                                    integer_values=args.coords_integer_values)
-    testset = MSNSTDataset(args.test_path, transform=transform, enc_transform=enc_transform,
-                                    resolution=args.coords_size, crop_size = args.crop_size,
-                                    integer_values=args.coords_integer_values)
+    fmow_train_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-train-meta.csv')
+    dataset = wds.DataPipeline(
+            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-train/{000000..000229}.tar'),
+            wds.tarfile_to_samples(),
+            wds.shuffle(100, initial=100),
+            wds.decode(),
+            partial(fmow_temporal_attpatch_preprocess_train, img_transform=enc_transform, fmow_meta_df=fmow_train_meta_df, resolution=256, crop_size=args.crop_size, num_cond=2),
+        )
+    fmow_val_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-val-meta.csv')
+    testset = wds.DataPipeline(
+            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar'),
+            wds.tarfile_to_samples(),
+            wds.shuffle(100, initial=100),
+            wds.decode(),
+            partial(fmow_temporal_attpatch_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, crop_size=args.crop_size, num_cond=2),
+        )
+    # dataset = PatchNSTDataset(args.path, transform=transform, enc_transform=enc_transform,
+    #                                 resolution=args.coords_size, crop_size = args.crop_size,
+    #                                 integer_values=args.coords_integer_values)
+    # testset = MSNSTDataset(args.test_path, transform=transform, enc_transform=enc_transform,
+    #                                 resolution=args.coords_size, crop_size = args.crop_size,
+    #                                 integer_values=args.coords_integer_values)
     # fid_dataset = ImageDataset(args.path, transform=transform_fid, resolution=args.coords_size, to_crop=args.to_crop)
     # fid_dataset.length = args.fid_samples
     loader = data.DataLoader(
         dataset,
         batch_size=args.batch,
-        sampler=data_sampler(dataset, shuffle=True, distributed=args.distributed),
+        # sampler=data_sampler(dataset, shuffle=True, distributed=args.distributed),
         drop_last=True,
         num_workers=args.num_workers,
         pin_memory=True,
@@ -591,7 +612,7 @@ if __name__ == '__main__':
     test_loader = data.DataLoader(
         testset,
         batch_size=args.n_sample,
-        sampler=data_sampler(testset, shuffle=False, distributed=args.distributed),
+        # sampler=data_sampler(testset, shuffle=False, distributed=args.distributed),
         drop_last=True,
         num_workers=args.num_workers,
         pin_memory=False,
