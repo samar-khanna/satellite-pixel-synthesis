@@ -115,7 +115,12 @@ def fmow_temporal_preprocess_train(examples, img_transform, fmow_meta_df, resolu
         target_img = torch.cat((target_img, cond_t)),  # (C+3, H, W)
         cond1 = img_temporal[1]
         cond2 = img_temporal[2]
-        yield target_img, cond1, cond2
+        output = {
+            'target': target_img,
+            'cond1': cond1,
+            'cond2': cond2,
+        }
+        yield output
 
 
 def collate_fn(examples):
@@ -123,9 +128,9 @@ def collate_fn(examples):
     cond1_imgs = []
     cond2_imgs = []
 
-    for target_img, cond1_img, cond2_img in examples:
-        target_imgs.append(target_img)
-        cond1_imgs.append(cond1_img)
-        cond2_imgs.append(cond2_img)
+    for example in examples:
+        target_imgs.append(example['target'])
+        cond1_imgs.append(example['cond1'])
+        cond2_imgs.append(example['cond2'])
 
     return torch.stack(target_imgs), torch.stack(cond1_imgs), torch.stack(cond2_imgs)
