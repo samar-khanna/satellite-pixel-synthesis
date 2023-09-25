@@ -3,6 +3,10 @@ import math
 import random
 import os
 
+from functools import partial
+
+import pandas as pd
+import webdataset as wds
 import numpy as np
 import torch
 from torch import nn, autograd, optim
@@ -17,6 +21,7 @@ import model
 from model.loss import SSIM
 from dataset import Naip2SentinelTDataset
 from distributed import get_rank, synchronize, reduce_loss_dict
+from fmow_temporal import fmow_temporal_preprocess_train
 from tensor_transforms import convert_to_coord_format
 import torchvision.models as models
 
@@ -512,10 +517,26 @@ if __name__ == '__main__':
     #                                    transforms.Lambda(lambda x: x.mul_(255.).byte())])
     # dataset = MultiScaleDataset(args.path, transform=transform, resolution=args.coords_size, crop_size=args.crop,
     #                             integer_values=args.coords_integer_values, to_crop=args.to_crop)
-    dataset = Naip2SentinelTDataset(args.path, transform=transform, enc_transform=enc_transform,
-                                    resolution=args.coords_size, integer_values=args.coords_integer_values)
-    testset = Naip2SentinelTDataset(args.test_path, transform=transform, enc_transform=enc_transform,
-                                    resolution=args.coords_size, integer_values=args.coords_integer_values)
+    # dataset = Naip2SentinelTDataset(args.path, transform=transform, enc_transform=enc_transform,
+    #                                 resolution=args.coords_size, integer_values=args.coords_integer_values)
+    # testset = Naip2SentinelTDataset(args.test_path, transform=transform, enc_transform=enc_transform,
+    #                                 resolution=args.coords_size, integer_values=args.coords_integer_values)
+    fmow_train_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-train-meta.csv')
+    dataset = wds.DataPipeline(
+            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-train/{000000..000229}.tar -'),
+            wds.tarfile_to_samples(),
+            wds.shuffle(10000, initial=100),
+            wds.decode(),
+            partial(fmow_temporal_preprocess_train, img_transform=enc_transform, fmow_meta_df=fmow_train_meta_df, resolution=256, num_cond=2),
+        )
+    fmow_val_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-val-meta.csv')
+    testset = wds.DataPipeline(
+            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar -'),
+            wds.tarfile_to_samples(),
+            wds.shuffle(10000, initial=100),
+            wds.decode(),
+            partial(fmow_temporal_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, num_cond=2),
+        )
     # fid_dataset = ImageDataset(args.path, transform=transform_fid, resolution=args.coords_size, to_crop=args.to_crop)
     # fid_dataset.length = args.fid_samples
     loader = data.DataLoader(
