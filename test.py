@@ -161,7 +161,7 @@ def test_loader(args, g_ema, device):
             sample, _ = g_ema(converted, lowres_img, highres_img2, noise)
 
             utils.save_image(
-                highres,
+                real_img,
                 os.path.join(path, 'ground_truth', f"{i}.png"),
                 nrow=1,
                 normalize=True,
@@ -230,6 +230,7 @@ def test_patch_loader(args, g_ema, device):
                 break
 
             sample_patches = {}
+            real_patches = {}
 
             test_data, img_path = next(loader)
 
@@ -251,12 +252,14 @@ def test_patch_loader(args, g_ema, device):
                 sample, _ = g_ema(converted, lowres_img, highres_img2, noise, h_start, w_start)
 
                 sample_patches[patch_index] = sample
+                real_patches[patch_index] = real_img
 
             sample = stack_sliding_patches(sample_patches, 1, args.coords_size, args.crop_size)
+            real_img = stack_sliding_patches(real_patches, 1, args.coords_size, args.crop_size)
 #             sample = stack_patches(sample_patches, 1, args.coords_size, args.crop_size)
 
             utils.save_image(
-                highres,
+                real_img,
                 os.path.join(path, 'ground_truth', f"{i}.png"),
                 nrow=1,
                 normalize=True,
