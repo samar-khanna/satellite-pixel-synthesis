@@ -232,7 +232,7 @@ def test_patch_loader(args, g_ema, device):
             sample_patches = {}
             real_patches = {}
 
-            test_data, img_path = next(loader)
+            test_data = next(loader)
 
             # filename = os.path.join(path, 'cls', args.output_dir, img_path[0].replace("tif", "png"))
 
