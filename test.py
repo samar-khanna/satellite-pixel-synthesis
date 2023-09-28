@@ -254,8 +254,8 @@ def test_patch_loader(args, g_ema, device):
                 sample_patches[patch_index] = sample
                 real_patches[patch_index] = real_img
 
-            sample = stack_sliding_patches(sample_patches, 1, args.coords_size, args.crop_size)
-            real_img = stack_sliding_patches(real_patches, 1, args.coords_size, args.crop_size)
+            sample = stack_patches(sample_patches, 1, args.coords_size, args.crop_size)
+            real_img = stack_patches(real_patches, 1, args.coords_size, args.crop_size)
 #             sample = stack_patches(sample_patches, 1, args.coords_size, args.crop_size)
 
             utils.save_image(
