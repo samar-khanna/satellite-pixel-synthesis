@@ -320,9 +320,11 @@ if __name__ == '__main__':
     Generator = getattr(model, args.Generator)
     print('Generator', Generator)
 
-    os.makedirs(os.path.join(path, 'cls', args.output_dir), exist_ok=True)
-    args.path_fid = os.path.join(path, 'application', args.output_dir)
-    os.makedirs(args.path_fid, exist_ok=True)
+    os.makedirs(os.path.join(path, 'ground_truth'), exist_ok=True)
+    os.makedirs(os.path.join(path, 'generated'), exist_ok=True)
+    # os.makedirs(os.path.join(path, 'cls', args.output_dir), exist_ok=True)
+    # args.path_fid = os.path.join(path, 'application', args.output_dir)
+    # os.makedirs(args.path_fid, exist_ok=True)
 
     n_gpu = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     args.distributed = n_gpu > 1
