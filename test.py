@@ -3,6 +3,9 @@ import math
 import random
 import os
 import pandas as pd
+from functools import partial
+import webdataset as wds
+from fmow_temporal import fmow_temporal_preprocess_train, fmow_temporal_attpatch_preprocess_train
 from PIL import Image
 
 import numpy as np
@@ -95,24 +98,31 @@ def stack_sliding_patches(patches, batch_size, resolution, patch_size, channel_s
 def test_loader(args, g_ema, device):
     transform = transforms.Compose(
         [
-            transforms.Resize(256),
-            transforms.CenterCrop(256),
             transforms.ToTensor(),
+            transforms.Resize(256, antialias=True),
+            transforms.CenterCrop(256),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True),
         ]
     )
-    testset = Naip2SentinelTPath(args.test_path, transform=transform, enc_transform=transform,
-                                    resolution=args.coords_size, integer_values=args.coords_integer_values)
+    fmow_val_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-val-meta.csv')
+    testset = wds.DataPipeline(
+            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar'),
+            wds.tarfile_to_samples(),
+            # wds.shuffle(100, initial=100),
+            wds.decode(),
+            partial(fmow_temporal_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, num_cond=2),
+        )
     test_loader = data.DataLoader(
         testset,
         batch_size=1,
-        sampler=data_sampler(testset, shuffle=False, distributed=args.distributed),
-        drop_last=True,
+        # sampler=data_sampler(testset, shuffle=False, distributed=args.distributed),
+        # drop_last=True,
         num_workers=args.num_workers,
         pin_memory=False,
     )
 
-    pbar = range(len(test_loader))
+    # pbar = range(len(test_loader))
+    pbar = range(10000)
 
     loader = sample_data(test_loader)
 
@@ -139,7 +149,7 @@ def test_loader(args, g_ema, device):
 
                 break
 
-            highres, lowres_img, highres_img2, img_path = next(loader)
+            highres, lowres_img, highres_img2 = next(loader)
             highres = highres.to(device)
             lowres_img = lowres_img.to(device)
             highres_img2 = highres_img2.to(device)
@@ -151,8 +161,15 @@ def test_loader(args, g_ema, device):
             sample, _ = g_ema(converted, lowres_img, highres_img2, noise)
 
             utils.save_image(
+                highres,
+                os.path.join(path, 'ground_truth', f"{i}.png"),
+                nrow=1,
+                normalize=True,
+                range=(-1, 1),
+            )
+            utils.save_image(
                 sample,
-                os.path.join(path, 'cls', args.output_dir, img_path[0].replace("tif", "png")),
+                os.path.join(path, 'generated', f"{i}.png"),
                 nrow=1,
                 normalize=True,
                 range=(-1, 1),
@@ -162,25 +179,30 @@ def test_loader(args, g_ema, device):
 def test_patch_loader(args, g_ema, device):
     transform = transforms.Compose(
         [
-            transforms.Resize(256),
-            transforms.CenterCrop(256),
             transforms.ToTensor(),
+            transforms.Resize(256, antialias=True),
+            transforms.CenterCrop(256),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True),
         ]
     )
-    testset = MSNSTPDataset(args.test_path, transform=transform, enc_transform=transform,
-                                    resolution=args.coords_size, crop_size = args.crop_size,
-                                    integer_values=args.coords_integer_values)
+    fmow_val_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-val-meta.csv')
+    testset = wds.DataPipeline(
+            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar'),
+            wds.tarfile_to_samples(),
+            # wds.shuffle(100, initial=100),
+            wds.decode(),
+            partial(fmow_temporal_attpatch_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, crop_size=args.crop_size, num_cond=2, is_test=True),
+        )
     test_loader = data.DataLoader(
         testset,
         batch_size=1,
-        sampler=data_sampler(testset, shuffle=False, distributed=args.distributed),
-        drop_last=True,
+        # sampler=data_sampler(testset, shuffle=False, distributed=args.distributed),
+        # drop_last=True,
         num_workers=args.num_workers,
         pin_memory=False,
     )
 
-    pbar = range(len(test_loader))
+    pbar = range(10000)
 
     loader = sample_data(test_loader)
 
@@ -211,35 +233,42 @@ def test_patch_loader(args, g_ema, device):
 
             test_data, img_path = next(loader)
 
-            filename = os.path.join(path, 'cls', args.output_dir, img_path[0].replace("tif", "png"))
+            # filename = os.path.join(path, 'cls', args.output_dir, img_path[0].replace("tif", "png"))
 
-            if os.path.exists(filename) and i<14000:
-                continue
-            else:
-                for patch_index in test_data.keys():
-                    highres, lowres_img, highres_img2, h_start, w_start = test_data[patch_index]
-                    highres = highres.to(device)
-                    lowres_img = lowres_img.to(device)
-                    highres_img2 = highres_img2.to(device)
+            # if os.path.exists(filename) and i<14000:
+            #     continue
+            # else:
+            for patch_index in test_data.keys():
+                highres, lowres_img, highres_img2, h_start, w_start = test_data[patch_index]
+                highres = highres.to(device)
+                lowres_img = lowres_img.to(device)
+                highres_img2 = highres_img2.to(device)
 
-                    real_img, converted = highres[:, :3], highres[:, 3:]
+                real_img, converted = highres[:, :3], highres[:, 3:]
 
-                    noise = mixing_noise(1, args.latent, args.mixing, device)
+                noise = mixing_noise(1, args.latent, args.mixing, device)
 
-                    sample, _ = g_ema(converted, lowres_img, highres_img2, noise, h_start, w_start)
+                sample, _ = g_ema(converted, lowres_img, highres_img2, noise, h_start, w_start)
 
-                    sample_patches[patch_index] = sample
+                sample_patches[patch_index] = sample
 
-                sample = stack_sliding_patches(sample_patches, 1, args.coords_size, args.crop_size)
-    #             sample = stack_patches(sample_patches, 1, args.coords_size, args.crop_size)
+            sample = stack_sliding_patches(sample_patches, 1, args.coords_size, args.crop_size)
+#             sample = stack_patches(sample_patches, 1, args.coords_size, args.crop_size)
 
-                utils.save_image(
-                    sample,
-                    os.path.join(path, 'cls', args.output_dir, img_path[0].replace("tif", "png")),
-                    nrow=1,
-                    normalize=True,
-                    range=(-1, 1),
-                )
+            utils.save_image(
+                highres,
+                os.path.join(path, 'ground_truth', f"{i}.png"),
+                nrow=1,
+                normalize=True,
+                range=(-1, 1),
+            )
+            utils.save_image(
+                sample,
+                os.path.join(path, 'generated', f"{i}.png"),
+                nrow=1,
+                normalize=True,
+                range=(-1, 1),
+            )
 
 
 if __name__ == '__main__':
@@ -262,7 +291,7 @@ if __name__ == '__main__':
     # dataset
     parser.add_argument('--num_workers', type=int, default=16)
     parser.add_argument('--to_crop', action='store_true')
-    parser.add_argument('--crop_size', type=int, default=256)
+    parser.add_argument('--crop_size', type=int, default=64)
     parser.add_argument('--coords_size', type=int, default=256)
     parser.add_argument('--enc_res', type=int, default=256)
 
