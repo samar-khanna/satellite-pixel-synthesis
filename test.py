@@ -105,13 +105,17 @@ def test_loader(args, g_ema, device):
         ]
     )
     fmow_val_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-val-meta.csv')
-    testset = wds.DataPipeline(
-            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar'),
-            wds.tarfile_to_samples(),
-            # wds.shuffle(100, initial=100),
-            wds.decode(),
-            partial(fmow_temporal_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, num_cond=2),
-        )
+    testset = wds.WebDataset('pipe:aws s3 cp s3://stability-west/satellite_datasets/fmow-temporal-512-val/{000000..000032}.tar -').decode().compose(
+        partial(fmow_temporal_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256,
+                num_cond=2),
+    )
+    # testset = wds.DataPipeline(
+    #         wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar'),
+    #         wds.tarfile_to_samples(),
+    #         # wds.shuffle(100, initial=100),
+    #         wds.decode(),
+    #         partial(fmow_temporal_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, num_cond=2),
+    #     )
     test_loader = data.DataLoader(
         testset,
         batch_size=1,
@@ -186,13 +190,17 @@ def test_patch_loader(args, g_ema, device):
         ]
     )
     fmow_val_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-val-meta.csv')
-    testset = wds.DataPipeline(
-            wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar'),
-            wds.tarfile_to_samples(),
-            # wds.shuffle(100, initial=100),
-            wds.decode(),
-            partial(fmow_temporal_attpatch_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, crop_size=args.crop_size, num_cond=2, is_test=True),
-        )
+    testset = wds.WebDataset('pipe:aws s3 cp s3://stability-west/satellite_datasets/fmow-temporal-512-val/{000000..000032}.tar -').decode().compose(
+        partial(fmow_temporal_attpatch_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df,
+                resolution=256, crop_size=args.crop_size, num_cond=2, is_test=True),
+    )
+    # testset = wds.DataPipeline(
+    #         wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar'),
+    #         wds.tarfile_to_samples(),
+    #         # wds.shuffle(100, initial=100),
+    #         wds.decode(),
+    #         partial(fmow_temporal_attpatch_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256, crop_size=args.crop_size, num_cond=2, is_test=True),
+    #     )
     test_loader = data.DataLoader(
         testset,
         batch_size=1,
