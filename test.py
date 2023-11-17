@@ -154,10 +154,10 @@ def test_loader(args, g_ema, device):
 
                 break
 
-            highres, lowres_img, highres_img2 = next(loader)
-            highres = highres.to(device)
-            lowres_img = lowres_img.to(device)
-            highres_img2 = highres_img2.to(device)
+            highres, lowres_img, highres_img2 = next(testset)
+            highres = highres.to(device).unsqueeze(0)
+            lowres_img = lowres_img.to(device).unsqueeze(0)
+            highres_img2 = highres_img2.to(device).unsqueeze(0)
 
             real_img, converted = highres[:, :3], highres[:, 3:]
 
@@ -207,6 +207,7 @@ def test_patch_loader(args, g_ema, device):
         batch_size=1,
         # sampler=data_sampler(testset, shuffle=False, distributed=args.distributed),
         # drop_last=True,
+        shuffle=False,
         num_workers=args.num_workers,
         pin_memory=False,
     )
@@ -241,7 +242,7 @@ def test_patch_loader(args, g_ema, device):
             sample_patches = {}
             real_patches = {}
 
-            test_data = next(loader)
+            test_data = next(testset)
 
             # filename = os.path.join(path, 'cls', args.output_dir, img_path[0].replace("tif", "png"))
 
