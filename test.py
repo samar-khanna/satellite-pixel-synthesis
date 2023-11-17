@@ -109,6 +109,7 @@ def test_loader(args, g_ema, device):
         partial(fmow_temporal_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256,
                 num_cond=2),
     )
+    iter_testset = iter(testset)
     # testset = wds.DataPipeline(
     #         wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar'),
     #         wds.tarfile_to_samples(),
@@ -154,7 +155,7 @@ def test_loader(args, g_ema, device):
 
                 break
 
-            highres, lowres_img, highres_img2 = next(testset)
+            highres, lowres_img, highres_img2 = next(iter_testset)
             highres = highres.to(device).unsqueeze(0)
             lowres_img = lowres_img.to(device).unsqueeze(0)
             highres_img2 = highres_img2.to(device).unsqueeze(0)
@@ -195,6 +196,7 @@ def test_patch_loader(args, g_ema, device):
         partial(fmow_temporal_attpatch_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df,
                 resolution=256, crop_size=args.crop_size, num_cond=2, is_test=True),
     )
+    iter_testset = iter(testset)
     # testset = wds.DataPipeline(
     #         wds.ResampledShards('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar'),
     #         wds.tarfile_to_samples(),
@@ -242,7 +244,7 @@ def test_patch_loader(args, g_ema, device):
             sample_patches = {}
             real_patches = {}
 
-            test_data = next(testset)
+            test_data = next(iter_testset)
 
             # filename = os.path.join(path, 'cls', args.output_dir, img_path[0].replace("tif", "png"))
 
