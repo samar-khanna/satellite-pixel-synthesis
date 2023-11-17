@@ -121,6 +121,7 @@ def test_loader(args, g_ema, device):
         batch_size=1,
         # sampler=data_sampler(testset, shuffle=False, distributed=args.distributed),
         # drop_last=True,
+        shuffle=False,
         num_workers=args.num_workers,
         pin_memory=False,
     )
