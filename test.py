@@ -128,7 +128,7 @@ def test_loader(args, g_ema, device):
     )
 
     # pbar = range(len(test_loader))
-    pbar = range(10000)
+    pbar = range(11000)
 
     loader = sample_data(test_loader)
 
@@ -217,7 +217,7 @@ def test_patch_loader(args, g_ema, device):
         pin_memory=False,
     )
 
-    pbar = range(10000)
+    pbar = range(11000)
 
     loader = sample_data(test_loader)
 
