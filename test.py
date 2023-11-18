@@ -107,7 +107,7 @@ def test_loader(args, g_ema, device):
     fmow_val_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-val-meta.csv')
     testset = wds.WebDataset('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar').decode().compose(
         partial(fmow_temporal_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df, resolution=256,
-                num_cond=2),
+                pred_past=args.pred_past, num_cond=2, is_test=True),
     )
     iter_testset = iter(testset)
     # testset = wds.DataPipeline(
@@ -156,6 +156,9 @@ def test_loader(args, g_ema, device):
                 break
 
             highres, lowres_img, highres_img2 = next(iter_testset)
+            if highres is None:
+                continue
+
             highres = highres.to(device).unsqueeze(0)
             lowres_img = lowres_img.to(device).unsqueeze(0)
             highres_img2 = highres_img2.to(device).unsqueeze(0)
@@ -194,7 +197,7 @@ def test_patch_loader(args, g_ema, device):
     fmow_val_meta_df = pd.read_csv('/atlas2/u/samarkhanna/fmow_csvs/fmow-val-meta.csv')
     testset = wds.WebDataset('/atlas2/data/satlas/fmow_temporal_webdataset/fmow-temporal-512-val/{000000..000032}.tar').decode().compose(
         partial(fmow_temporal_attpatch_preprocess_train, img_transform=transform, fmow_meta_df=fmow_val_meta_df,
-                resolution=256, crop_size=args.crop_size, num_cond=2, is_test=True),
+                resolution=256, crop_size=args.crop_size, num_cond=2, is_test=True, pred_past=args.pred_past),
     )
     iter_testset = iter(testset)
     # testset = wds.DataPipeline(
@@ -245,6 +248,8 @@ def test_patch_loader(args, g_ema, device):
             real_patches = {}
 
             test_data = next(iter_testset)
+            if test_data is None:
+                continue
 
             # filename = os.path.join(path, 'cls', args.output_dir, img_path[0].replace("tif", "png"))
 
@@ -290,6 +295,8 @@ if __name__ == '__main__':
     device = 'cuda'
 
     parser = argparse.ArgumentParser()
+
+    parser.add_argument('--pred_past', action='store_true', default=False, help="pred past or future")
 
     parser.add_argument('--test_path', type=str, default="")
     parser.add_argument('--output_dir', type=str, default="texas_housing_test")

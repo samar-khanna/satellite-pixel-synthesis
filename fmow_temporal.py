@@ -93,9 +93,14 @@ def fmow_numerical_metadata(example, meta_df, target_resolution, num_metadata, r
     return torch.tensor([lon + base_lon, lat + base_lat, gsd, cloud_cover, year, month, day])
 
 
-def fmow_temporal_preprocess_train(examples, img_transform, fmow_meta_df, resolution, num_cond=2):
+def fmow_temporal_preprocess_train(examples, img_transform, fmow_meta_df, resolution, pred_past=True, num_cond=2, is_test=False):
     for example in examples:
         img_temporal, md_keys = fmow_temporal_images(example, img_transform, num_frames=num_cond + 1)
+        ascending_idx = np.argsort(md_keys).tolist()
+        img_temporal = [img_temporal[i] for i in (ascending_idx if pred_past else ascending_idx[::-1])]
+        md_keys = [md_keys[i] for i in (ascending_idx if pred_past else ascending_idx[::-1])]
+        if md_keys[0] in md_keys[1:] and is_test:
+            yield None, None, None
 
         target_img = img_temporal[0]  # (C, H, W)
         target_rgb_key = md_keys[0].replace('metadata', 'input').replace('json', 'npy')
@@ -123,9 +128,15 @@ def fmow_temporal_preprocess_train(examples, img_transform, fmow_meta_df, resolu
         yield target_img, cond1, cond2
 
 
-def fmow_temporal_attpatch_preprocess_train(examples, img_transform, fmow_meta_df, resolution, crop_size, num_cond=2, is_test=False,):
+def fmow_temporal_attpatch_preprocess_train(examples, img_transform, fmow_meta_df, resolution, crop_size, pred_past=True, num_cond=2, is_test=False,):
     for example in examples:
         img_temporal, md_keys = fmow_temporal_images(example, img_transform, num_frames=num_cond + 1)
+
+        ascending_idx = np.argsort(md_keys).tolist()
+        img_temporal = [img_temporal[i] for i in (ascending_idx if pred_past else ascending_idx[::-1])]
+        md_keys = [md_keys[i] for i in (ascending_idx if pred_past else ascending_idx[::-1])]
+        if md_keys[0] in md_keys[1:] and is_test:
+            yield None
 
         target_img = img_temporal[0]  # (C, H, W)
         target_rgb_key = md_keys[0].replace('metadata', 'input').replace('json', 'npy')
